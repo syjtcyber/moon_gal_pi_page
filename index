@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>문갈피 v0.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#e8dfd0;font-family:'Nanum Pen Script',cursive}
+.wrap{max-width:720px;margin:auto;padding:18px}
+input,textarea{width:100%;box-sizing:border-box;padding:14px;margin:8px 0;border-radius:16px;border:1px solid #d2bfa8;background:#fcf8f1;font-family:inherit;font-size:1.9rem}
+button{background:#8a6748;color:#fff;border:none;border-radius:16px;padding:12px 18px;font-family:inherit;font-size:1.8rem;cursor:pointer}
+.search{margin-top:18px}
+.card{background:#fcf8f1;border-radius:16px;padding:18px;margin-top:18px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.q{font-size:2.2rem}.meta{color:#6f6258;font-size:1.4rem}.memo{display:none;margin-top:12px;border-top:1px dashed #ccb}
+.card.open .memo{display:block}.tools{margin-top:12px}
+.star{float:right;font-size:2rem;cursor:pointer}
+
+body.theme-paper{background:#e8dfd0;color:#4d3b2f}
+body.theme-sage{background:#dfe8dd;color:#324030}
+body.theme-pink{background:#f7e3e8;color:#5c3a46}
+body.theme-brown{background:#d9c3a6;color:#4b3424}
+body.theme-dark{background:#222;color:#eee}
+body.theme-paper .card,body.theme-paper input,body.theme-paper textarea{background:#fcf8f1}
+body.theme-sage .card,body.theme-sage input,body.theme-sage textarea{background:#f7fbf6}
+body.theme-pink .card,body.theme-pink input,body.theme-pink textarea{background:#fff8fa}
+body.theme-brown .card,body.theme-brown input,body.theme-brown textarea{background:#fff7ed}
+body.theme-dark .card,body.theme-dark input,body.theme-dark textarea{background:#333;color:#eee;border-color:#666}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script></head>
+<body><div class="wrap"><div style="text-align:right"><button onclick="alert(`v0.3.1\n설정은 준비중입니다.`)">⚙️</button></div>
+<input id=q placeholder="문장">
+<input id=s placeholder="출처">
+<textarea id=m rows=5 placeholder="내 코멘트"></textarea>
+<button id=saveBtn onclick="save()">등록</button> <button onclick="savePNG()">PNG 저장</button>
+
+<div style="display:flex;gap:8px;margin:10px 0;align-items:center;">
+<label>🎨 테마</label>
+<select id="theme" onchange="applyTheme()">
+<option value="paper">종이</option>
+<option value="sage">세이지</option>
+<option value="pink">벚꽃</option>
+<option value="brown">브라운</option>
+<option value="dark">다크</option>
+</select>
+</div>
+<input class="search" id=search placeholder="검색..." oninput="draw()">
+<div id=list></div>
+</div>
+<script>let db=JSON.parse(localStorage.getItem('mungalpi')||'[]'),edit=-1;const persist=()=>localStorage.setItem('mungalpi',JSON.stringify(db));function applyTheme(){document.body.className='theme-'+theme.value;localStorage.setItem('mungalpi_theme',theme.value);}window.addEventListener('DOMContentLoaded',()=>{theme.value=localStorage.getItem('mungalpi_theme')||'paper';applyTheme();draw();});function save(){if(!q.value.trim())return;let o={q:q.value,s:s.value,m:m.value,d:new Date().toLocaleDateString(),f:edit>-1?db[edit].f:false};if(edit==-1)db.unshift(o);else{db[edit]=o;edit=-1;saveBtn.textContent='저장';}q.value=s.value=m.value='';persist();draw();}function draw(){
+const k=(search.value||'').toLowerCase();
+list.innerHTML='';
+db.filter(v=>(v.q+v.s+v.m).toLowerCase().includes(k)).forEach((v,i)=>{
+list.innerHTML+=`<div class='card' onclick="this.classList.toggle('open')">
+<div class=q>${v.q}</div>
+<div class=meta>${v.s} · ${v.d}</div>
+<div class='memo'>${v.m||''}</div>
+</div>`;
+});
+}
+async function savePNG(){
+const node=document.querySelector('.card');
+if(!node){alert('등록된 문갈피가 없습니다.');return;}
+const canvas=await html2canvas(node,{backgroundColor:null,scale:2});
+const a=document.createElement('a');
+a.download='문갈피_'+Date.now()+'.png';
+a.href=canvas.toDataURL('image/png');
+a.click();
+}
+ </script></body></html>
