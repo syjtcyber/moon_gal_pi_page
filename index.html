@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#e8dfd0">
-<title>문갈피 v0.6.2</title>
+<title>문갈피 v0.6.1</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -678,7 +678,7 @@ body.theme-dark{
   <div class="topbar">
     <div>
       <h1 class="title">문갈피</h1>
-      <div class="version">v0.6.2 · 문장과 장면을 따로 기록</div>
+      <div class="version">v0.6.1 · 문장과 장면을 따로 기록</div>
     </div>
     <button type="button" class="secondary" onclick="showInfo()" aria-label="버전 정보">⚙️</button>
   </div>
@@ -1309,7 +1309,7 @@ function applySceneTheme(){
 
 function showInfo(){
   alert(
-    '문갈피 v0.6.5\n\n'+
+    '문갈피 v0.6.1\n\n'+
     '문장과 장면을 따로 기록합니다.\n'+
     '문장과 장면에서 세로형·가로형 PNG를 만들 수 있습니다.\n'+
     '문장·출처·코멘트 정렬과 이미지용 줄바꿈 편집을 지원합니다.\n'+
@@ -1346,7 +1346,7 @@ function downloadTextFile(filename,text,type){
 function exportBackup(){
   const backup={
     app:'문갈피',
-    version:'0.6.5',
+    version:'0.6.1',
     exportedAt:new Date().toISOString(),
     entries:db,
     scenes:sceneDb
@@ -1451,7 +1451,7 @@ function buildBookmarkElement(entry,orientation,timestamp=formatTimestamp()){
 
   const time=document.createElement('div');
   time.className='bookmark-timestamp';
-  time.textContent='생성일 · '+timestamp;
+  time.textContent='생성 · '+timestamp;
   node.append(footer,time);
 
   return node;
