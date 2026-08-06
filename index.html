@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#e8dfd0">
-<title>문갈피 v0.5.5</title>
+<title>문갈피 v0.6.2</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -91,6 +91,20 @@ input,textarea{font-family:var(--content-font)}
   gap:12px;
   margin-bottom:8px;
 }
+
+.tab-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:18px 0 12px}
+.tab-btn{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.tab-btn[aria-selected="true"]{background:var(--button);border-color:var(--button);color:#fff}
+.tab-panel[hidden]{display:none}
+.scene-intro{margin:0 0 12px;padding:12px 14px;border-left:3px solid var(--button);border-radius:0 12px 12px 0;background:var(--soft);color:var(--muted);font-size:.92rem;line-height:1.6}
+.scene-card .scene-work{color:var(--muted);font-family:var(--ui-font);font-size:.86rem;font-weight:700}
+.scene-card .scene-text{margin-top:7px;white-space:pre-wrap;font-size:1.08rem;line-height:1.7}
+.scene-card .scene-feeling{display:inline-block;margin-top:10px;padding:4px 9px;border-radius:999px;background:var(--soft);color:var(--ink);font-family:var(--ui-font);font-size:.8rem}
+.scene-extra{margin:2px 0 14px;border:1px solid var(--line);border-radius:14px;background:var(--soft);overflow:hidden}
+.scene-extra summary{padding:12px 14px;cursor:pointer;color:var(--muted);font-family:var(--ui-font);font-size:.9rem;font-weight:700}
+.scene-extra summary span{font-weight:400}
+.scene-extra[open] summary{border-bottom:1px solid var(--line);color:var(--ink)}
+.scene-extra .scene-extra-inner{padding:0 12px 2px}
 
 .title{
   margin:0;
@@ -527,13 +541,9 @@ button:disabled{opacity:.52;cursor:not-allowed}
 .bookmark-quote.position-center{justify-content:center}
 .bookmark-quote.position-bottom{justify-content:flex-end}
 
-.bookmark-quote.size-small{font-size:1.34rem}
-.bookmark-quote.size-normal{font-size:1.64rem}
-.bookmark-quote.size-large{font-size:1.96rem}
+.bookmark-quote{font-size:var(--quote-size,20px)}
 
-.bookmark-output.horizontal .bookmark-quote.size-small{font-size:1.42rem}
-.bookmark-output.horizontal .bookmark-quote.size-normal{font-size:1.72rem}
-.bookmark-output.horizontal .bookmark-quote.size-large{font-size:2.08rem}
+.bookmark-output.horizontal .bookmark-quote{font-size:var(--quote-size,20px)}
 
 .bookmark-output.horizontal .bookmark-quote{
   line-height:1.65;
@@ -570,6 +580,16 @@ button:disabled{opacity:.52;cursor:not-allowed}
   letter-spacing:.08em;
   text-align:center;
   opacity:.7;
+}
+
+.bookmark-timestamp{
+  margin-top:8px;
+  color:var(--muted);
+  font-family:var(--ui-font);
+  font-size:.66rem;
+  letter-spacing:.04em;
+  text-align:center;
+  opacity:.62;
 }
 
 .capture-stage{
@@ -658,11 +678,17 @@ body.theme-dark{
   <div class="topbar">
     <div>
       <h1 class="title">문갈피</h1>
-      <div class="version">v0.5.5 · 출처 표기 보완</div>
+      <div class="version">v0.6.2 · 문장과 장면을 따로 기록</div>
     </div>
     <button type="button" class="secondary" onclick="showInfo()" aria-label="버전 정보">⚙️</button>
   </div>
 
+  <div class="tab-row" role="tablist" aria-label="문갈피 기록 종류">
+    <button id="sentenceTab" class="tab-btn" type="button" role="tab" aria-selected="true" aria-controls="sentencePanel" onclick="switchTab('sentence')">문장</button>
+    <button id="sceneTab" class="tab-btn" type="button" role="tab" aria-selected="false" aria-controls="scenePanel" onclick="switchTab('scene')">장면</button>
+  </div>
+
+  <section id="sentencePanel" class="tab-panel" role="tabpanel" aria-labelledby="sentenceTab">
   <textarea id="q" rows="3" placeholder="문장 · Enter로 줄바꿈"></textarea>
   <input id="s" placeholder="출처" autocomplete="off">
   <textarea id="m" rows="5" placeholder="내 코멘트"></textarea>
@@ -681,7 +707,7 @@ body.theme-dark{
           <option value="sage">세이지</option>
           <option value="pink">벚꽃</option>
           <option value="brown">브라운</option>
-          <option value="dark">다크</option>
+          <option value="dark">차콜</option>
         </select>
       </div>
 
@@ -706,6 +732,43 @@ body.theme-dark{
   <input class="search" id="search" placeholder="문장·출처·코멘트 검색..." oninput="draw()">
   <div id="status" class="status" aria-live="polite"></div>
   <section id="list" aria-label="등록된 문갈피"></section>
+  </section>
+
+  <section id="scenePanel" class="tab-panel" role="tabpanel" aria-labelledby="sceneTab" hidden>
+    <p class="scene-intro">정확한 대사는 기억나지 않아도 괜찮아요. 기억에 남은 장면과 그때의 마음을, 내 말 그대로 남겨요.</p>
+    <div class="control-panel scene-controls" aria-label="장면 보기 설정">
+      <div class="control-grid">
+        <div class="control-group">
+          <label class="control-label" for="sceneTheme">색상</label>
+          <select id="sceneTheme" onchange="applySceneTheme()">
+            <option value="paper">종이</option>
+            <option value="sage">세이지</option>
+            <option value="pink">벚꽃</option>
+            <option value="brown">브라운</option>
+            <option value="dark">차콜</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <input id="sceneWork" placeholder="작품명 (선택)" autocomplete="off">
+    <textarea id="sceneText" rows="5" placeholder="기억할 장면 · 내 말로 적기"></textarea>
+    <details id="sceneExtra" class="scene-extra">
+      <summary>감상 더하기 <span>(선택)</span></summary>
+      <div class="scene-extra-inner">
+        <select id="sceneFeeling" aria-label="남은 느낌">
+          <option value="">남은 느낌 (선택)</option><option value="위로">위로</option><option value="먹먹함">먹먹함</option><option value="기쁨">기쁨</option><option value="웃김">웃김</option><option value="싫었음">싫었음</option><option value="무덤덤함">무덤덤함</option>
+        </select>
+        <textarea id="sceneNote" rows="3" placeholder="조금 더 남기고 싶은 말 (선택)"></textarea>
+      </div>
+    </details>
+    <div class="action-row">
+      <button id="sceneSaveBtn" type="button" onclick="saveScene()">장면 남기기</button>
+      <button id="sceneCancelBtn" type="button" class="secondary" onclick="cancelSceneEdit()" hidden>수정 취소</button>
+    </div>
+    <input class="search" id="sceneSearch" placeholder="작품·장면·느낌 검색..." oninput="drawScenes()">
+    <div id="sceneStatus" class="status" aria-live="polite"></div>
+    <section id="sceneList" aria-label="등록된 장면갈피"></section>
+  </section>
 </main>
 
 <div id="imageModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="imageModalTitle" hidden>
@@ -743,14 +806,15 @@ body.theme-dark{
         <div class="option-group">
           <span class="option-title">글자 크기</span>
           <div class="option-row">
-            <button id="sizeSmallBtn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize('small')">작게</button>
-            <button id="sizeNormalBtn" type="button" class="option-btn" aria-pressed="true" onclick="setTextSize('normal')">보통</button>
-            <button id="sizeLargeBtn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize('large')">크게</button>
+            <button id="size10Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(10)">10</button>
+            <button id="size15Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(15)">15</button>
+            <button id="size20Btn" type="button" class="option-btn" aria-pressed="true" onclick="setTextSize(20)">20</button>
+            <button id="size25Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(25)">25</button>
           </div>
         </div>
 
         <div class="option-group">
-          <span class="option-title">출처 정렬</span>
+          <span id="sourceOptionTitle" class="option-title">출처 정렬</span>
           <div class="option-row">
             <button id="sourceLeftBtn" type="button" class="option-btn" aria-pressed="false" onclick="setSourceAlign('left')">왼쪽</button>
             <button id="sourceCenterBtn" type="button" class="option-btn" aria-pressed="false" onclick="setSourceAlign('center')">가운데</button>
@@ -759,7 +823,7 @@ body.theme-dark{
         </div>
 
         <div class="option-group">
-          <span class="option-title">코멘트 정렬</span>
+          <span id="commentOptionTitle" class="option-title">코멘트 정렬</span>
           <div class="option-row">
             <button id="commentLeftBtn" type="button" class="option-btn" aria-pressed="true" onclick="setCommentAlign('left')">왼쪽</button>
             <button id="commentCenterBtn" type="button" class="option-btn" aria-pressed="false" onclick="setCommentAlign('center')">가운데</button>
@@ -769,12 +833,12 @@ body.theme-dark{
       </div>
 
       <div class="image-editor">
-        <label for="imageQuoteEditor">이미지용 문장 편집</label>
+        <label id="imageEditorLabel" for="imageQuoteEditor">이미지용 문장 편집</label>
         <textarea id="imageQuoteEditor" rows="4" oninput="updateImageQuoteDraft()"></textarea>
         <span class="image-editor-note">여기서 줄바꿈이나 띄어쓰기를 조절해도 저장된 원문은 바뀌지 않습니다.</span>
       </div>
 
-      <p class="image-help">문장·출처·코멘트 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.</p>
+      <p id="imageHelp" class="image-help">문장·출처·코멘트 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.</p>
       <div id="previewShell" class="preview-shell">
         <div id="previewScaler" class="preview-scaler"></div>
       </div>
@@ -793,6 +857,7 @@ body.theme-dark{
 'use strict';
 
 const STORAGE_KEY='mungalpi';
+const SCENE_STORAGE_KEY='mungalpi_scenes';
 const THEME_KEY='mungalpi_theme';
 const SORT_KEY='mungalpi_sort';
 const ORIENTATION_KEY='mungalpi_output_orientation';
@@ -823,9 +888,10 @@ const alignRightBtn=document.getElementById('alignRightBtn');
 const positionTopBtn=document.getElementById('positionTopBtn');
 const positionCenterBtn=document.getElementById('positionCenterBtn');
 const positionBottomBtn=document.getElementById('positionBottomBtn');
-const sizeSmallBtn=document.getElementById('sizeSmallBtn');
-const sizeNormalBtn=document.getElementById('sizeNormalBtn');
-const sizeLargeBtn=document.getElementById('sizeLargeBtn');
+const size10Btn=document.getElementById('size10Btn');
+const size15Btn=document.getElementById('size15Btn');
+const size20Btn=document.getElementById('size20Btn');
+const size25Btn=document.getElementById('size25Btn');
 const sourceLeftBtn=document.getElementById('sourceLeftBtn');
 const sourceCenterBtn=document.getElementById('sourceCenterBtn');
 const sourceRightBtn=document.getElementById('sourceRightBtn');
@@ -833,16 +899,39 @@ const commentLeftBtn=document.getElementById('commentLeftBtn');
 const commentCenterBtn=document.getElementById('commentCenterBtn');
 const commentRightBtn=document.getElementById('commentRightBtn');
 const imageQuoteEditor=document.getElementById('imageQuoteEditor');
+const imageModalTitle=document.getElementById('imageModalTitle');
+const imageEditorLabel=document.getElementById('imageEditorLabel');
+const imageHelp=document.getElementById('imageHelp');
+const sourceOptionTitle=document.getElementById('sourceOptionTitle');
+const commentOptionTitle=document.getElementById('commentOptionTitle');
 const previewShell=document.getElementById('previewShell');
 const previewScaler=document.getElementById('previewScaler');
 const saveImageBtn=document.getElementById('saveImageBtn');
 const captureStage=document.getElementById('captureStage');
+const sentenceTab=document.getElementById('sentenceTab');
+const sceneTab=document.getElementById('sceneTab');
+const sentencePanel=document.getElementById('sentencePanel');
+const scenePanel=document.getElementById('scenePanel');
+const sceneWork=document.getElementById('sceneWork');
+const sceneText=document.getElementById('sceneText');
+const sceneFeeling=document.getElementById('sceneFeeling');
+const sceneNote=document.getElementById('sceneNote');
+const sceneExtra=document.getElementById('sceneExtra');
+const sceneTheme=document.getElementById('sceneTheme');
+const sceneSaveBtn=document.getElementById('sceneSaveBtn');
+const sceneCancelBtn=document.getElementById('sceneCancelBtn');
+const sceneSearch=document.getElementById('sceneSearch');
+const sceneList=document.getElementById('sceneList');
+const sceneStatus=document.getElementById('sceneStatus');
 
 let db=loadDatabase();
+let sceneDb=loadSceneDatabase();
 let editingId=null;
+let sceneEditingId=null;
 let favoriteOnly=false;
 let statusTimer=null;
 let imageEntryId=null;
+let imageEntryType='sentence';
 let imageOrientation=localStorage.getItem(ORIENTATION_KEY)==='horizontal'?'horizontal':'vertical';
 let imageTextAlign=['left','center','right'].includes(localStorage.getItem(TEXT_ALIGN_KEY))
   ?localStorage.getItem(TEXT_ALIGN_KEY)
@@ -850,9 +939,9 @@ let imageTextAlign=['left','center','right'].includes(localStorage.getItem(TEXT_
 let imageTextPosition=['top','center','bottom'].includes(localStorage.getItem(TEXT_POSITION_KEY))
   ?localStorage.getItem(TEXT_POSITION_KEY)
   :'center';
-let imageTextSize=['small','normal','large'].includes(localStorage.getItem(TEXT_SIZE_KEY))
-  ?localStorage.getItem(TEXT_SIZE_KEY)
-  :'normal';
+let imageTextSize=[10,15,20,25].includes(Number(localStorage.getItem(TEXT_SIZE_KEY)))
+  ?Number(localStorage.getItem(TEXT_SIZE_KEY))
+  :20;
 let imageSourceAlign=['left','center','right'].includes(localStorage.getItem(SOURCE_ALIGN_KEY))
   ?localStorage.getItem(SOURCE_ALIGN_KEY)
   :'right';
@@ -892,6 +981,21 @@ function loadDatabase(){
   }
 }
 
+function normalizeScene(item,index=0){
+  const createdAt=Number(item.createdAt)||(Date.now()-index);
+  return {id:String(item.id||makeId()),work:String(item.work||''),text:String(item.text||''),feeling:String(item.feeling||''),note:String(item.note||''),d:String(item.d||new Date(createdAt).toLocaleDateString('ko-KR')),createdAt};
+}
+
+function loadSceneDatabase(){
+  try{
+    const parsed=JSON.parse(localStorage.getItem(SCENE_STORAGE_KEY)||'[]');
+    if(!Array.isArray(parsed))return [];
+    const normalized=parsed.map(normalizeScene);
+    localStorage.setItem(SCENE_STORAGE_KEY,JSON.stringify(normalized));
+    return normalized;
+  }catch(error){console.error(error);return []}
+}
+
 function persist(){
   try{
     localStorage.setItem(STORAGE_KEY,JSON.stringify(db));
@@ -903,12 +1007,31 @@ function persist(){
   }
 }
 
+function persistScenes(){
+  try{localStorage.setItem(SCENE_STORAGE_KEY,JSON.stringify(sceneDb));return true}
+  catch(error){console.error(error);alert('브라우저 저장 공간에 장면을 기록하지 못했습니다.');return false}
+}
+
 function setStatus(message){
   clearTimeout(statusTimer);
   status.textContent=message;
   statusTimer=setTimeout(()=>{
     if(status.textContent===message)status.textContent='';
   },2800);
+}
+
+function setSceneStatus(message){
+  sceneStatus.textContent=message;
+  setTimeout(()=>{if(sceneStatus.textContent===message)sceneStatus.textContent=''},2800);
+}
+
+function switchTab(tab){
+  const showScene=tab==='scene';
+  sentenceTab.setAttribute('aria-selected',String(!showScene));
+  sceneTab.setAttribute('aria-selected',String(showScene));
+  sentencePanel.hidden=showScene;
+  scenePanel.hidden=!showScene;
+  if(showScene)drawScenes();
 }
 
 function escapeHTML(value){
@@ -1114,10 +1237,64 @@ function draw(){
   });
 }
 
+function saveScene(){
+  const text=sceneText.value.trim();
+  if(!text){alert('기억할 장면을 적어 주세요.');sceneText.focus();return}
+  const current=sceneEditingId?sceneDb.find(item=>item.id===sceneEditingId):null;
+  const entry={id:current?.id||makeId(),work:sceneWork.value.trim(),text,feeling:sceneFeeling.value,note:sceneNote.value.trim(),d:current?.d||new Date().toLocaleDateString('ko-KR'),createdAt:current?.createdAt||Date.now()};
+  if(sceneEditingId){
+    const index=sceneDb.findIndex(item=>item.id===sceneEditingId);
+    if(index<0){cancelSceneEdit();alert('수정할 장면을 찾지 못했습니다.');return}
+    const previous=sceneDb[index];sceneDb[index]=entry;
+    if(!persistScenes()){sceneDb[index]=previous;return}
+    resetSceneForm();drawScenes();setSceneStatus('장면을 수정했습니다.');return;
+  }
+  sceneDb.unshift(entry);
+  if(!persistScenes()){sceneDb.shift();return}
+  resetSceneForm();drawScenes();setSceneStatus('장면을 남겼습니다.');
+}
+
+function startSceneEdit(id){
+  const entry=sceneDb.find(item=>item.id===id);if(!entry)return;
+  sceneEditingId=id;sceneWork.value=entry.work;sceneText.value=entry.text;sceneFeeling.value=entry.feeling;sceneNote.value=entry.note;sceneExtra.open=Boolean(entry.feeling||entry.note);
+  sceneSaveBtn.textContent='수정 완료';sceneCancelBtn.hidden=false;sceneText.focus();window.scrollTo({top:0,behavior:'smooth'});
+}
+
+function resetSceneForm(){sceneEditingId=null;sceneWork.value='';sceneText.value='';sceneFeeling.value='';sceneNote.value='';sceneExtra.open=false;sceneSaveBtn.textContent='장면 남기기';sceneCancelBtn.hidden=true}
+function cancelSceneEdit(){resetSceneForm();setSceneStatus('수정을 취소했습니다.')}
+
+function deleteScene(id){
+  const entry=sceneDb.find(item=>item.id===id);if(!entry)return;
+  const label=entry.text.length>28?entry.text.slice(0,28)+'…':entry.text;
+  if(!confirm('“'+label+'” 장면을 삭제할까요?'))return;
+  const previous=sceneDb;sceneDb=sceneDb.filter(item=>item.id!==id);
+  if(!persistScenes()){sceneDb=previous;return}
+  if(sceneEditingId===id)resetSceneForm();drawScenes();setSceneStatus('장면을 삭제했습니다.');
+}
+
+function drawScenes(){
+  const keyword=sceneSearch.value.trim().toLocaleLowerCase('ko-KR');
+  const visible=[...sceneDb].filter(entry=>!keyword||[entry.work,entry.text,entry.feeling,entry.note].join(' ').toLocaleLowerCase('ko-KR').includes(keyword)).sort((a,b)=>b.createdAt-a.createdAt);
+  sceneList.innerHTML='';
+  if(!visible.length){sceneList.innerHTML='<div class="empty">'+(sceneDb.length?'검색 결과가 없습니다.':'첫 장면을 남겨 보세요.')+'</div>';return}
+  visible.forEach(entry=>{
+    const card=document.createElement('article');card.className='card scene-card';
+    const work=entry.work?'<div class="scene-work">'+escapeHTML(entry.work)+'</div>':'';
+    const feeling=entry.feeling?'<div class="scene-feeling">'+escapeHTML(entry.feeling)+'</div>':'';
+    const note=entry.note?'<div class="memo">'+escapeHTML(entry.note)+'</div>':'';
+    card.innerHTML=work+'<div class="scene-text">'+escapeHTML(entry.text)+'</div>'+feeling+'<div class="meta">'+escapeHTML(entry.d)+'</div>'+note+'<div class="tools"><button type="button" class="secondary edit-btn">수정</button><button type="button" class="secondary image-btn">문갈피 만들기</button><button type="button" class="danger delete-btn">삭제</button></div>';
+    card.querySelector('.edit-btn').addEventListener('click',()=>startSceneEdit(entry.id));
+    card.querySelector('.image-btn').addEventListener('click',()=>openImageModal(entry.id,'scene'));
+    card.querySelector('.delete-btn').addEventListener('click',()=>deleteScene(entry.id));
+    sceneList.appendChild(card);
+  });
+}
+
 function applyTheme(){
   const value=theme.value||'paper';
   document.body.className='theme-'+value;
   localStorage.setItem(THEME_KEY,value);
+  if(sceneTheme)sceneTheme.value=value;
 
   const metaColor={
     paper:'#e8dfd0',sage:'#dfe8dd',pink:'#f7e3e8',brown:'#d9c3a6',dark:'#202224'
@@ -1125,15 +1302,21 @@ function applyTheme(){
   document.querySelector('meta[name="theme-color"]').setAttribute('content',metaColor);
 }
 
+function applySceneTheme(){
+  theme.value=sceneTheme.value||'paper';
+  applyTheme();
+}
+
 function showInfo(){
   alert(
-    '문갈피 v0.5.5\n\n'+
-    '기록은 한 번만 등록합니다.\n'+
-    '각 문갈피에서 세로형·가로형 PNG를 만들 수 있습니다.\n'+
+    '문갈피 v0.6.5\n\n'+
+    '문장과 장면을 따로 기록합니다.\n'+
+    '문장과 장면에서 세로형·가로형 PNG를 만들 수 있습니다.\n'+
     '문장·출처·코멘트 정렬과 이미지용 줄바꿈 편집을 지원합니다.\n'+
     '장식선은 제거해 깔끔한 기본형으로 출력합니다.\n'+
     '모바일 수정창과 키보드 사용을 보완했습니다.\n\n'+
-    '등록 · 수정 · 삭제\n'+
+    '문장: 등록 · 수정 · 삭제\n'+
+    '장면: 내 말 그대로 기록\n'+
     '즐겨찾기 · 검색 · 정렬\n'+
     'JSON 백업/복원'
   );
@@ -1163,9 +1346,10 @@ function downloadTextFile(filename,text,type){
 function exportBackup(){
   const backup={
     app:'문갈피',
-    version:'0.5.5',
+    version:'0.6.5',
     exportedAt:new Date().toISOString(),
-    entries:db
+    entries:db,
+    scenes:sceneDb
   };
   const date=new Date().toISOString().slice(0,10);
   downloadTextFile(
@@ -1184,6 +1368,8 @@ async function importBackup(event){
   try{
     const parsed=JSON.parse(await file.text());
     const entries=Array.isArray(parsed)?parsed:parsed.entries;
+    const hasScenes=Array.isArray(parsed?.scenes);
+    const scenes=hasScenes?parsed.scenes:sceneDb;
     if(!Array.isArray(entries))throw new Error('Invalid backup');
 
     const restored=entries.map(normalizeEntry).filter(entry=>entry.q.trim());
@@ -1193,14 +1379,18 @@ async function importBackup(event){
     }
 
     if(!confirm(
-      '현재 문갈피 '+db.length+'개를 백업 파일의 '+
-      restored.length+'개로 교체할까요?\n\n계속하기 전에 현재 백업 저장을 권장합니다.'
+      '현재 문갈피 '+db.length+'개와 장면 '+sceneDb.length+'개를 백업 파일의 '+
+      restored.length+'개 문갈피와 '+scenes.length+'개 장면으로 교체할까요?'+
+      (hasScenes?'':'\n\n이전 백업이라 장면 기록은 유지됩니다.')+'\n\n계속하기 전에 현재 백업 저장을 권장합니다.'
     ))return;
 
     const previous=db;
+    const previousScenes=sceneDb;
     db=restored;
-    if(!persist()){
+    sceneDb=hasScenes?scenes.map(normalizeScene).filter(scene=>scene.text.trim()):sceneDb;
+    if(!persist()||!persistScenes()){
       db=previous;
+      sceneDb=previousScenes;
       return;
     }
 
@@ -1210,6 +1400,7 @@ async function importBackup(event){
     favoriteFilterBtn.textContent='☆ 즐겨찾기만';
     search.value='';
     draw();
+    drawScenes();
     setStatus('백업을 불러왔습니다.');
   }catch(error){
     console.error(error);
@@ -1217,7 +1408,13 @@ async function importBackup(event){
   }
 }
 
-function buildBookmarkElement(entry,orientation){
+function formatTimestamp(date=new Date()){
+  const pad=value=>String(value).padStart(2,'0');
+  return date.getFullYear()+'.'+pad(date.getMonth()+1)+'.'+pad(date.getDate())+
+    ' '+pad(date.getHours())+':'+pad(date.getMinutes())+':'+pad(date.getSeconds());
+}
+
+function buildBookmarkElement(entry,orientation,timestamp=formatTimestamp()){
   const node=document.createElement('article');
   node.className='bookmark-output '+orientation;
 
@@ -1227,8 +1424,8 @@ function buildBookmarkElement(entry,orientation){
   const quote=document.createElement('div');
   quote.className=
     'bookmark-quote text-'+imageTextAlign+
-    ' position-'+imageTextPosition+
-    ' size-'+imageTextSize;
+    ' position-'+imageTextPosition;
+  quote.style.setProperty('--quote-size',imageTextSize+'px');
 
   const quoteText=document.createElement('span');
   quoteText.textContent=imageQuoteDraft||entry.q;
@@ -1250,19 +1447,44 @@ function buildBookmarkElement(entry,orientation){
 
   const footer=document.createElement('div');
   footer.className='bookmark-footer';
-  footer.textContent='문갈피';
-  node.append(footer);
+  footer.textContent=imageEntryType==='scene'?'장면갈피':'문갈피';
+
+  const time=document.createElement('div');
+  time.className='bookmark-timestamp';
+  time.textContent='생성일 · '+timestamp;
+  node.append(footer,time);
 
   return node;
 }
 
-function openImageModal(id){
-  const entry=db.find(item=>item.id===id);
+function getImageEntry(){
+  if(imageEntryType==='scene'){
+    const scene=sceneDb.find(item=>item.id===imageEntryId);
+    if(!scene)return null;
+    const note=[scene.feeling?('남은 느낌 · '+scene.feeling):'',scene.note].filter(Boolean).join('\n');
+    return {q:scene.text,s:scene.work,m:note};
+  }
+  return db.find(item=>item.id===imageEntryId)||null;
+}
+
+function openImageModal(id,type='sentence'){
+  imageEntryType=type==='scene'?'scene':'sentence';
+  const entry=imageEntryType==='scene'
+    ?sceneDb.find(item=>item.id===id)
+    :db.find(item=>item.id===id);
   if(!entry)return;
 
   imageEntryId=id;
-  imageQuoteDraft=entry.q;
-  imageQuoteEditor.value=entry.q;
+  imageQuoteDraft=imageEntryType==='scene'?entry.text:entry.q;
+  imageQuoteEditor.value=imageQuoteDraft;
+  const isScene=imageEntryType==='scene';
+  imageModalTitle.textContent=isScene?'장면갈피 이미지 만들기':'책갈피 이미지 만들기';
+  imageEditorLabel.textContent=isScene?'이미지용 장면 편집':'이미지용 문장 편집';
+  sourceOptionTitle.textContent=isScene?'작품명 정렬':'출처 정렬';
+  commentOptionTitle.textContent=isScene?'느낌·메모 정렬':'코멘트 정렬';
+  imageHelp.textContent=isScene
+    ?'장면·작품명·남은 느낌 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.'
+    :'문장·출처·코멘트 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.';
   imageModal.hidden=false;
   document.body.style.overflow='hidden';
   updateOutputButtons();
@@ -1274,6 +1496,7 @@ function openImageModal(id){
 function closeImageModal(){
   imageModal.hidden=true;
   imageEntryId=null;
+  imageEntryType='sentence';
   imageQuoteDraft='';
   imageQuoteEditor.value='';
   previewScaler.innerHTML='';
@@ -1292,9 +1515,10 @@ function updateOutputButtons(){
   positionCenterBtn.setAttribute('aria-pressed',String(imageTextPosition==='center'));
   positionBottomBtn.setAttribute('aria-pressed',String(imageTextPosition==='bottom'));
 
-  sizeSmallBtn.setAttribute('aria-pressed',String(imageTextSize==='small'));
-  sizeNormalBtn.setAttribute('aria-pressed',String(imageTextSize==='normal'));
-  sizeLargeBtn.setAttribute('aria-pressed',String(imageTextSize==='large'));
+  size10Btn.setAttribute('aria-pressed',String(imageTextSize===10));
+  size15Btn.setAttribute('aria-pressed',String(imageTextSize===15));
+  size20Btn.setAttribute('aria-pressed',String(imageTextSize===20));
+  size25Btn.setAttribute('aria-pressed',String(imageTextSize===25));
 
   sourceLeftBtn.setAttribute('aria-pressed',String(imageSourceAlign==='left'));
   sourceCenterBtn.setAttribute('aria-pressed',String(imageSourceAlign==='center'));
@@ -1327,7 +1551,7 @@ function setTextPosition(position){
 }
 
 function setTextSize(size){
-  imageTextSize=['small','normal','large'].includes(size)?size:'normal';
+  imageTextSize=[10,15,20,25].includes(Number(size))?Number(size):20;
   localStorage.setItem(TEXT_SIZE_KEY,imageTextSize);
   updateOutputButtons();
   renderPreview();
@@ -1353,7 +1577,7 @@ function updateImageQuoteDraft(){
 }
 
 function renderPreview(){
-  const entry=db.find(item=>item.id===imageEntryId);
+  const entry=getImageEntry();
   previewScaler.innerHTML='';
   if(!entry)return;
 
@@ -1388,9 +1612,9 @@ function ensureHtml2Canvas(){
 }
 
 async function saveBookmarkImage(){
-  const entry=db.find(item=>item.id===imageEntryId);
+  const entry=getImageEntry();
   if(!entry){
-    alert('이미지를 만들 문갈피를 찾지 못했습니다.');
+    alert('이미지를 만들 기록을 찾지 못했습니다.');
     return;
   }
 
@@ -1402,7 +1626,7 @@ async function saveBookmarkImage(){
     await ensureHtml2Canvas();
     if(document.fonts?.ready)await document.fonts.ready;
 
-    const exportNode=buildBookmarkElement(entry,imageOrientation);
+    const exportNode=buildBookmarkElement(entry,imageOrientation,formatTimestamp());
     captureStage.appendChild(exportNode);
 
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
@@ -1416,7 +1640,7 @@ async function saveBookmarkImage(){
     });
 
     const directionName=imageOrientation==='vertical'?'세로':'가로';
-    const filename='문갈피_'+safeFilePart(entry.q)+'_'+directionName+'.png';
+    const filename=(imageEntryType==='scene'?'장면갈피_':'문갈피_')+safeFilePart(entry.q)+'_'+directionName+'.png';
 
     await new Promise((resolve,reject)=>{
       if(!canvas.toBlob){
