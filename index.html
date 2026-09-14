@@ -846,10 +846,17 @@ body.theme-dark{
         <div class="option-group">
           <span class="option-title">글자 크기</span>
           <div class="option-row">
-            <button id="size10Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(10)">10</button>
-            <button id="size15Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(15)">15</button>
-            <button id="size20Btn" type="button" class="option-btn" aria-pressed="true" onclick="setTextSize(20)">20</button>
-            <button id="size25Btn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(25)">25</button>
+            <button id="sizeSmallBtn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(12)">작게</button>
+            <button id="sizeMediumBtn" type="button" class="option-btn" aria-pressed="true" onclick="setTextSize(18)">보통</button>
+            <button id="sizeLargeBtn" type="button" class="option-btn" aria-pressed="false" onclick="setTextSize(24)">크게</button>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <span class="option-title">내 반응</span>
+          <div class="option-row">
+            <button id="reactionOnBtn" type="button" class="option-btn" aria-pressed="true" onclick="setReaction('on')">넣기</button>
+            <button id="reactionOffBtn" type="button" class="option-btn" aria-pressed="false" onclick="setReaction('off')">빼기</button>
           </div>
         </div>
 
@@ -862,7 +869,7 @@ body.theme-dark{
           </div>
         </div>
 
-        <div class="option-group">
+        <div id="commentOptionGroup" class="option-group">
           <span id="commentOptionTitle" class="option-title">코멘트 정렬</span>
           <div class="option-row">
             <button id="commentLeftBtn" type="button" class="option-btn" aria-pressed="true" onclick="setCommentAlign('left')">왼쪽</button>
@@ -878,7 +885,7 @@ body.theme-dark{
         <span class="image-editor-note">여기서 줄바꿈이나 띄어쓰기를 조절해도 저장된 원문은 바뀌지 않습니다.</span>
       </div>
 
-      <p id="imageHelp" class="image-help">문장·출처·코멘트 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.</p>
+      <p id="imageHelp" class="image-help">정렬과 내 반응 넣기/빼기는 PNG에만 적용되며, 기록은 하나로 유지됩니다.</p>
       <div id="previewShell" class="preview-shell">
         <div id="previewScaler" class="preview-scaler"></div>
       </div>
@@ -906,6 +913,7 @@ const TEXT_POSITION_KEY='mungalpi_output_text_position';
 const TEXT_SIZE_KEY='mungalpi_output_text_size';
 const SOURCE_ALIGN_KEY='mungalpi_output_source_align';
 const COMMENT_ALIGN_KEY='mungalpi_output_comment_align';
+const REACTION_KEY='mungalpi_output_reaction';
 
 const q=document.getElementById('q');
 const s=document.getElementById('s');
@@ -928,16 +936,18 @@ const alignRightBtn=document.getElementById('alignRightBtn');
 const positionTopBtn=document.getElementById('positionTopBtn');
 const positionCenterBtn=document.getElementById('positionCenterBtn');
 const positionBottomBtn=document.getElementById('positionBottomBtn');
-const size10Btn=document.getElementById('size10Btn');
-const size15Btn=document.getElementById('size15Btn');
-const size20Btn=document.getElementById('size20Btn');
-const size25Btn=document.getElementById('size25Btn');
+const sizeSmallBtn=document.getElementById('sizeSmallBtn');
+const sizeMediumBtn=document.getElementById('sizeMediumBtn');
+const sizeLargeBtn=document.getElementById('sizeLargeBtn');
 const sourceLeftBtn=document.getElementById('sourceLeftBtn');
 const sourceCenterBtn=document.getElementById('sourceCenterBtn');
 const sourceRightBtn=document.getElementById('sourceRightBtn');
 const commentLeftBtn=document.getElementById('commentLeftBtn');
 const commentCenterBtn=document.getElementById('commentCenterBtn');
 const commentRightBtn=document.getElementById('commentRightBtn');
+const reactionOnBtn=document.getElementById('reactionOnBtn');
+const reactionOffBtn=document.getElementById('reactionOffBtn');
+const commentOptionGroup=document.getElementById('commentOptionGroup');
 const imageQuoteEditor=document.getElementById('imageQuoteEditor');
 const imageModalTitle=document.getElementById('imageModalTitle');
 const imageEditorLabel=document.getElementById('imageEditorLabel');
@@ -985,15 +995,16 @@ let imageTextAlign=['left','center','right'].includes(localStorage.getItem(TEXT_
 let imageTextPosition=['top','center','bottom'].includes(localStorage.getItem(TEXT_POSITION_KEY))
   ?localStorage.getItem(TEXT_POSITION_KEY)
   :'center';
-let imageTextSize=[10,15,20,25].includes(Number(localStorage.getItem(TEXT_SIZE_KEY)))
+let imageTextSize=[12,18,24].includes(Number(localStorage.getItem(TEXT_SIZE_KEY)))
   ?Number(localStorage.getItem(TEXT_SIZE_KEY))
-  :20;
+  :18;
 let imageSourceAlign=['left','center','right'].includes(localStorage.getItem(SOURCE_ALIGN_KEY))
   ?localStorage.getItem(SOURCE_ALIGN_KEY)
   :'right';
 let imageCommentAlign=['left','center','right'].includes(localStorage.getItem(COMMENT_ALIGN_KEY))
   ?localStorage.getItem(COMMENT_ALIGN_KEY)
   :'left';
+let imageReaction=localStorage.getItem(REACTION_KEY)==='off'?'off':'on';
 let imageQuoteDraft='';
 let ocrImageUrl='';
 let ocrRunning=false;
@@ -1597,7 +1608,7 @@ function buildBookmarkElement(entry,orientation,timestamp=formatTimestamp()){
   node.append(hole,quote);
   if(entry.s)node.append(source);
 
-  if(entry.m){
+  if(imageReaction==='on'&&entry.m){
     const comment=document.createElement('div');
     comment.className='bookmark-comment align-'+imageCommentAlign;
     comment.textContent=entry.m;
@@ -1642,8 +1653,8 @@ function openImageModal(id,type='sentence'){
   sourceOptionTitle.textContent=isScene?'작품명 정렬':'출처 정렬';
   commentOptionTitle.textContent=isScene?'느낌·메모 정렬':'코멘트 정렬';
   imageHelp.textContent=isScene
-    ?'장면·작품명·남은 느낌 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.'
-    :'문장·출처·코멘트 정렬은 PNG에만 적용되며, 기록은 하나로 유지됩니다.';
+    ?'정렬과 내 반응 넣기/빼기는 PNG에만 적용되며, 기록은 하나로 유지됩니다.'
+    :'정렬과 내 반응 넣기/빼기는 PNG에만 적용되며, 기록은 하나로 유지됩니다.';
   imageModal.hidden=false;
   document.body.style.overflow='hidden';
   updateOutputButtons();
@@ -1674,10 +1685,13 @@ function updateOutputButtons(){
   positionCenterBtn.setAttribute('aria-pressed',String(imageTextPosition==='center'));
   positionBottomBtn.setAttribute('aria-pressed',String(imageTextPosition==='bottom'));
 
-  size10Btn.setAttribute('aria-pressed',String(imageTextSize===10));
-  size15Btn.setAttribute('aria-pressed',String(imageTextSize===15));
-  size20Btn.setAttribute('aria-pressed',String(imageTextSize===20));
-  size25Btn.setAttribute('aria-pressed',String(imageTextSize===25));
+  sizeSmallBtn.setAttribute('aria-pressed',String(imageTextSize===12));
+  sizeMediumBtn.setAttribute('aria-pressed',String(imageTextSize===18));
+  sizeLargeBtn.setAttribute('aria-pressed',String(imageTextSize===24));
+
+  reactionOnBtn.setAttribute('aria-pressed',String(imageReaction==='on'));
+  reactionOffBtn.setAttribute('aria-pressed',String(imageReaction==='off'));
+  commentOptionGroup.hidden=imageReaction==='off';
 
   sourceLeftBtn.setAttribute('aria-pressed',String(imageSourceAlign==='left'));
   sourceCenterBtn.setAttribute('aria-pressed',String(imageSourceAlign==='center'));
@@ -1710,8 +1724,15 @@ function setTextPosition(position){
 }
 
 function setTextSize(size){
-  imageTextSize=[10,15,20,25].includes(Number(size))?Number(size):20;
+  imageTextSize=[12,18,24].includes(Number(size))?Number(size):18;
   localStorage.setItem(TEXT_SIZE_KEY,imageTextSize);
+  updateOutputButtons();
+  renderPreview();
+}
+
+function setReaction(reaction){
+  imageReaction=reaction==='off'?'off':'on';
+  localStorage.setItem(REACTION_KEY,imageReaction);
   updateOutputButtons();
   renderPreview();
 }
