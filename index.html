@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#e8dfd0">
-<title>문갈피 v0.6.1</title>
+<title>문갈피 v0.6.2</title>
 
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -105,6 +105,28 @@ input,textarea{font-family:var(--content-font)}
 .scene-extra summary span{font-weight:400}
 .scene-extra[open] summary{border-bottom:1px solid var(--line);color:var(--ink)}
 .scene-extra .scene-extra-inner{padding:0 12px 2px}
+
+.ocr-panel{
+  margin:0 0 12px;
+  padding:13px;
+  border:1px solid var(--line);
+  border-radius:16px;
+  background:var(--paper);
+}
+.ocr-panel summary{
+  cursor:pointer;
+  color:var(--ink);
+  font-family:var(--ui-font);
+  font-weight:700;
+}
+.ocr-panel summary span{color:var(--muted);font-size:.82rem;font-weight:500}
+.ocr-inner{padding-top:12px}
+.ocr-intro{margin:0 0 10px;color:var(--muted);font-size:.88rem;line-height:1.55}
+.ocr-preview{display:none;width:100%;max-height:240px;object-fit:contain;margin:10px 0;border:1px solid var(--line);border-radius:12px;background:var(--soft)}
+.ocr-preview.visible{display:block}
+.ocr-draft{min-height:150px;margin-top:10px}
+.ocr-status{min-height:1.3em;margin:8px 0 0;color:var(--muted);font-family:var(--ui-font);font-size:.82rem;line-height:1.45}
+.ocr-file{display:none}
 
 .title{
   margin:0;
@@ -678,7 +700,7 @@ body.theme-dark{
   <div class="topbar">
     <div>
       <h1 class="title">문갈피</h1>
-      <div class="version">v0.6.1 · 문장과 장면을 따로 기록</div>
+      <div class="version">v0.6.2 · 사진 속 문장 가져오기</div>
     </div>
     <button type="button" class="secondary" onclick="showInfo()" aria-label="버전 정보">⚙️</button>
   </div>
@@ -689,6 +711,24 @@ body.theme-dark{
   </div>
 
   <section id="sentencePanel" class="tab-panel" role="tabpanel" aria-labelledby="sentenceTab">
+  <details class="ocr-panel">
+    <summary>📷 사진 속 문장 가져오기 <span>캡처 이미지도 가능</span></summary>
+    <div class="ocr-inner">
+      <p class="ocr-intro">사진에서 글자를 초안으로 읽어와요. 틀린 글자가 있을 수 있으니 직접 고친 뒤 문장칸으로 보내주세요. 선택한 사진은 저장하지 않으며, 처음 글자를 읽을 때는 인터넷 연결이 필요할 수 있어요.</p>
+      <div class="action-row">
+        <button type="button" class="secondary" onclick="ocrFileInput.click()">사진 선택</button>
+        <button id="ocrStartBtn" type="button" onclick="recognizeSelectedImage()" disabled>글자 읽기</button>
+      </div>
+      <input id="ocrFileInput" class="ocr-file" type="file" accept="image/*" onchange="prepareOcrImage(event)">
+      <img id="ocrPreview" class="ocr-preview" alt="선택한 이미지 미리보기">
+      <div id="ocrStatus" class="ocr-status" aria-live="polite"></div>
+      <textarea id="ocrDraft" class="ocr-draft" rows="6" placeholder="인식한 글자가 여기에 나타납니다. 필요한 문장만 남기고 고쳐주세요."></textarea>
+      <div class="action-row">
+        <button id="ocrUseBtn" type="button" onclick="useOcrDraft()" disabled>문장칸으로 가져오기</button>
+        <button type="button" class="secondary" onclick="clearOcr()">비우기</button>
+      </div>
+    </div>
+  </details>
   <textarea id="q" rows="3" placeholder="문장 · Enter로 줄바꿈"></textarea>
   <input id="s" placeholder="출처" autocomplete="off">
   <textarea id="m" rows="5" placeholder="내 코멘트"></textarea>
@@ -923,6 +963,12 @@ const sceneCancelBtn=document.getElementById('sceneCancelBtn');
 const sceneSearch=document.getElementById('sceneSearch');
 const sceneList=document.getElementById('sceneList');
 const sceneStatus=document.getElementById('sceneStatus');
+const ocrFileInput=document.getElementById('ocrFileInput');
+const ocrPreview=document.getElementById('ocrPreview');
+const ocrStatus=document.getElementById('ocrStatus');
+const ocrDraft=document.getElementById('ocrDraft');
+const ocrStartBtn=document.getElementById('ocrStartBtn');
+const ocrUseBtn=document.getElementById('ocrUseBtn');
 
 let db=loadDatabase();
 let sceneDb=loadSceneDatabase();
@@ -949,6 +995,118 @@ let imageCommentAlign=['left','center','right'].includes(localStorage.getItem(CO
   ?localStorage.getItem(COMMENT_ALIGN_KEY)
   :'left';
 let imageQuoteDraft='';
+let ocrImageUrl='';
+let ocrRunning=false;
+
+function setOcrStatus(message){
+  ocrStatus.textContent=message;
+}
+
+function loadOcrLibrary(){
+  if(window.Tesseract)return Promise.resolve();
+  if(window.__mungalpiOcrLoading)return window.__mungalpiOcrLoading;
+  window.__mungalpiOcrLoading=new Promise((resolve,reject)=>{
+    const script=document.createElement('script');
+    script.src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+    script.onload=()=>window.Tesseract?resolve():reject(new Error('OCR library unavailable'));
+    script.onerror=()=>reject(new Error('OCR library load failed'));
+    document.head.appendChild(script);
+  });
+  return window.__mungalpiOcrLoading;
+}
+
+function prepareOcrImage(event){
+  const file=event.target.files?.[0];
+  if(!file)return;
+  if(!file.type.startsWith('image/')){
+    alert('이미지 파일을 선택해 주세요.');
+    event.target.value='';
+    return;
+  }
+  if(file.size>20*1024*1024){
+    alert('사진이 너무 큽니다. 20MB 이하 이미지를 선택해 주세요.');
+    event.target.value='';
+    return;
+  }
+  if(ocrImageUrl)URL.revokeObjectURL(ocrImageUrl);
+  ocrImageUrl=URL.createObjectURL(file);
+  ocrPreview.src=ocrImageUrl;
+  ocrPreview.classList.add('visible');
+  ocrDraft.value='';
+  ocrUseBtn.disabled=true;
+  ocrStartBtn.disabled=false;
+  setOcrStatus('사진을 골랐어요. ‘글자 읽기’를 눌러주세요.');
+}
+
+async function recognizeSelectedImage(){
+  if(!ocrImageUrl||ocrRunning)return;
+  ocrRunning=true;
+  ocrStartBtn.disabled=true;
+  ocrFileInput.disabled=true;
+  try{
+    setOcrStatus('글자 인식 도구를 준비하고 있어요… 처음에는 잠시 걸릴 수 있어요.');
+    await loadOcrLibrary();
+    const worker=await Tesseract.createWorker('kor+eng',1,{
+      logger:message=>{
+        if(message.status==='recognizing text'){
+          const percent=Math.max(0,Math.min(100,Math.round((message.progress||0)*100)));
+          setOcrStatus('사진 속 글자를 읽는 중… '+percent+'%');
+        }
+      }
+    });
+    let result;
+    try{
+      result=await worker.recognize(ocrImageUrl);
+    }finally{
+      await worker.terminate();
+    }
+    const text=String(result?.data?.text||'').replace(/\r\n/g,'\n').trim();
+    ocrDraft.value=text;
+    ocrUseBtn.disabled=!text;
+    setOcrStatus(text?'초안을 가져왔어요. 틀린 부분을 고친 뒤 문장칸으로 보내주세요.':'읽힌 글자가 없어요. 글자가 더 크고 선명한 사진으로 다시 시도해 주세요.');
+    ocrDraft.focus();
+  }catch(error){
+    console.error(error);
+    setOcrStatus('글자를 읽지 못했어요. 인터넷 연결과 사진 선명도를 확인한 뒤 다시 눌러주세요.');
+  }finally{
+    ocrRunning=false;
+    ocrFileInput.disabled=false;
+    ocrStartBtn.disabled=!ocrImageUrl;
+  }
+}
+
+function useOcrDraft(){
+  const text=ocrDraft.value.trim();
+  if(!text){
+    alert('가져올 문장을 먼저 확인해 주세요.');
+    ocrDraft.focus();
+    return;
+  }
+  if(q.value.trim()&&q.value.trim()!==text){
+    const replace=confirm('문장칸에 이미 글이 있어요. 사진에서 가져온 글로 바꿀까요?');
+    if(!replace)return;
+  }
+  q.value=text;
+  q.focus();
+  setOcrStatus('문장칸으로 가져왔어요. 출처와 코멘트를 더한 뒤 등록하면 됩니다.');
+  q.scrollIntoView({behavior:'smooth',block:'center'});
+}
+
+function clearOcr(){
+  if(ocrImageUrl)URL.revokeObjectURL(ocrImageUrl);
+  ocrImageUrl='';
+  ocrFileInput.value='';
+  ocrPreview.removeAttribute('src');
+  ocrPreview.classList.remove('visible');
+  ocrDraft.value='';
+  ocrStartBtn.disabled=true;
+  ocrUseBtn.disabled=true;
+  setOcrStatus('');
+}
+
+ocrDraft.addEventListener('input',()=>{
+  ocrUseBtn.disabled=!ocrDraft.value.trim();
+});
 
 function makeId(){
   if(window.crypto&&crypto.randomUUID)return crypto.randomUUID();
@@ -1309,7 +1467,8 @@ function applySceneTheme(){
 
 function showInfo(){
   alert(
-    '문갈피 v0.6.1\n\n'+
+    '문갈피 v0.6.2\n\n'+
+    '사진 속 문장을 글자로 읽어와, 직접 고친 뒤 문갈피에 등록할 수 있습니다.\n'+
     '문장과 장면을 따로 기록합니다.\n'+
     '문장과 장면에서 세로형·가로형 PNG를 만들 수 있습니다.\n'+
     '문장·출처·코멘트 정렬과 이미지용 줄바꿈 편집을 지원합니다.\n'+
@@ -1346,7 +1505,7 @@ function downloadTextFile(filename,text,type){
 function exportBackup(){
   const backup={
     app:'문갈피',
-    version:'0.6.1',
+    version:'0.6.2',
     exportedAt:new Date().toISOString(),
     entries:db,
     scenes:sceneDb
